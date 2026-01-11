@@ -1,0 +1,7 @@
+gymnasium
+flappy-bird-gymnasium
+opencv-python
+numpy
+matplotlib
+pygame
+argparse
