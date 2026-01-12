@@ -6,7 +6,6 @@ import random
 import cv2
 import numpy as np
 import torch
-
 from src.agent import FlappyAgent
 from src.environment import Environment
 from src.utils import MetricLogger
@@ -15,14 +14,14 @@ from src.utils import MetricLogger
 PARAMS = {
     "seed": 221022,
     "episodes": 10000,
-    "batch_size": 64,
+    "batch_size": 32,
     "lr": 1e-4,
     "gamma": 0.99,
     "epsilon_start": 0.90,
     "epsilon_end": 0.01,
     "epsilon_decay": 30000,
     "target_update": 2000,
-    "memory_size": 30000,
+    "memory_size": 100000,
     "stack_size": 4,
     "frame_skip": 4,
     "validate_every": 250,
@@ -164,8 +163,8 @@ def train():
             # --- End of Episode ---
             logger.log(episode, raw_score, ep_reward, epsilon)
 
-            # 2. Lucky High Score Record
-            if raw_score > best_score:
+            # Check Record
+            if raw_score >= best_score and raw_score > 0:
                 best_score = raw_score
                 torch.save(
                     agent.policy_net.state_dict(),
