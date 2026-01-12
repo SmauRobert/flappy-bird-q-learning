@@ -1,5 +1,4 @@
 import argparse
-import time
 
 import cv2
 import numpy as np
@@ -90,7 +89,7 @@ def evaluate(model_path, num_games):
         scores.append(score)
         print(f"Game {i} | Seed: {seed} | Score: {score}")
 
-    print(f"\n>>> EVALUATION FINISHED <<<")
+    print("\n>>> EVALUATION FINISHED <<<")
     print(f"Average Score: {np.mean(scores):.2f}")
     print(f"Max Score: {np.max(scores)}")
 

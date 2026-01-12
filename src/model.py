@@ -14,6 +14,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
         # 1. Convolutional Layers (Feature Extraction)
+        # We use nn.Sequential to stack them cleanly
         self.features = nn.Sequential(
             # Conv 1: Low-level features (edges)
             nn.Conv2d(
