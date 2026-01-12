@@ -7,7 +7,6 @@ import time
 import cv2
 import numpy as np
 import torch
-
 from src.agent import FlappyAgent
 from src.environment import Environment
 from src.utils import MetricLogger
@@ -15,15 +14,15 @@ from src.utils import MetricLogger
 # --- CONFIGURATION ---
 PARAMS = {
     "seed": 221022,
-    "episodes": 5000,
+    "episodes": 10000,
     "batch_size": 32,
     "lr": 1e-4,
     "gamma": 0.99,
     "epsilon_start": 0.9,
     "epsilon_end": 0.01,
-    "epsilon_decay": 20000,
-    "target_update": 1000,
-    "memory_size": 50000,
+    "epsilon_decay": 30000,
+    "target_update": 2000,
+    "memory_size": 100000,
     "stack_size": 4,
     "frame_skip": 4,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
@@ -103,17 +102,17 @@ def train():
 
             while not done:
                 # Capture frame
-                if (
-                    render_live or raw_score > best_score
-                ):  # Keep frames if potentially a record
-                    frame = env.env.render()
-                    frames.append(frame)
-                    if render_live and frame is not None:
-                        cv2.imshow(
-                            "Live Training",
-                            cv2.cvtColor(np.array(frame), cv2.COLOR_RGB2BGR),
-                        )
-                        cv2.waitKey(1)
+                # if (
+                #     render_live or raw_score > best_score
+                # ):  # Keep frames if potentially a record
+                #     frame = env.env.render()
+                #     frames.append(frame)
+                #     if render_live and frame is not None:
+                #         cv2.imshow(
+                #             "Live Training",
+                #             cv2.cvtColor(np.array(frame), cv2.COLOR_RGB2BGR),
+                #         )
+                #         cv2.waitKey(1)
 
                 # Decay
                 epsilon = PARAMS["epsilon_end"] + (
@@ -135,9 +134,6 @@ def train():
                 if curr_score > raw_score:
                     r = 5.0
                     raw_score = curr_score
-                    # LOGGING CHANGE: Only print if score > 0
-                    if raw_score > 0:
-                        print(f"  Pipe {raw_score} passed!")
 
                 # Learn
                 agent.cache(state, action, r, next_state, done)
@@ -153,7 +149,7 @@ def train():
             logger.log(episode, raw_score, ep_reward, epsilon)
 
             # Check Record
-            if raw_score > best_score:
+            if raw_score >= best_score and raw_score > 0:
                 best_score = raw_score
                 # Save
                 torch.save(
@@ -167,13 +163,22 @@ def train():
                     f"\n[RECORD] Score: {best_score} | Time: {time_str} | Episode: {episode}"
                 )
 
-                play_replay(frames, best_score)
+                # play_replay(frames, best_score)
+
+            # 2. Console Output (Cleaned up)
+            # Print a single line for every episode so you see progress
+            print(
+                f"Ep {episode:4d} | Score: {raw_score} | Reward: {ep_reward:5.1f} | Eps: {epsilon:.4f}",
+                end="\r",
+            )
+
+            time_str = logger.get_time_stats()
 
             # Update Graph every 10 episodes to prevent lag
             if episode % 10 == 0:
                 logger.update_plot()
                 print(
-                    f"Ep {episode} | Score: {raw_score} | Reward: {ep_reward:.2f} | Eps: {epsilon:.4f}"
+                    f"Ep {episode} | Score: {raw_score} | Reward: {ep_reward:.2f} | Eps: {epsilon:.4f} | Time: {time_str}"
                 )
 
     except KeyboardInterrupt:
@@ -184,6 +189,13 @@ def train():
         logger.update_plot()  # Final graph update
 
     finally:
+        print("\nSaving final model state...")
+        # Check if agent exists to avoid errors if crash happened super early
+        if "agent" in locals():
+            torch.save(
+                agent.policy_net.state_dict(),
+                os.path.join(exp_path, "final_model.weights"),
+            )
         env.close()
         cv2.destroyAllWindows()
 
