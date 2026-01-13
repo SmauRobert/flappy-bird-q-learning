@@ -1,8 +1,5 @@
 # Flappy Bird AI Agent (Dueling Double Deep Q-Learning)
 
-![Project Banner](path/to/your/banner_image.png)
-_([Tip: You can add a screenshot of your agent playing here. Syntax: `![Alt Text](url)`])_
-
 ## Assignment 5: Reinforcement Learning
 
 **Team:** Hriscu Cosmin-Nicolas, Smău George-Robert
@@ -78,10 +75,10 @@ We utilize a Dueling Architecture which splits the network into two streams afte
 - **Value Stream V(s)**: Estimates the value of being in the current state.
 - **Advantage Stream A(s,a)**: Estimates the benefit of taking a specific action.
 
-Q(s,a)=V(s)+(A(s,a)−∣A∣1​a′∑​A(s,a′))
+$Q(s,a)=V(s)+(A(s,a)−1/∣A∣*\sum{}​A(s,a′))$
 
 ### 3. Loss Function: SmoothL1Loss (Huber Loss)
-Small errors -> MSE behaviour
+Small errors -> MSE behaviour  
 Large errors -> Liniar behaviour
 
 ### 4. Optimizer: ADAM (Adaptive Moment Estimation)
@@ -111,17 +108,10 @@ Optimization algorithm that combines ideas from both Momentum and RMSprop
 
 ## 📊 Results & Performance
 
-After training for 5000 episodes, our agent achieved the following stats:
+After training for 2400 episodes, our agent achieved the following stats:
 
-- Max Score: 230 pipes
-- Average Score (Last 100): 45 pipes
-- Training Time: ~4 hours on NVIDIA GTX 1650
+- Max Score: 323 pipes
 
-### Training Progress
-
-<!--(You can upload your plot image to the repo and link it here)
-
-    Observation: The agent initially struggles (pure exploration) but begins to understand the physics around Episode 1500, leading to a spike in scores.-->
 
 ## ⚠️ Challenges & Future Improvements
 
@@ -134,7 +124,6 @@ After training for 5000 episodes, our agent achieved the following stats:
 
 ## 📂 File Structure
 
-- agent.py: Contains the FlappyAgent class and Q-Learning logic.
-- model.py: Defines the PyTorch DuelingDQN architecture.
-- train.py: Main loop for training, logging, and saving checkpoints.
-- utils.py: Helper functions for plotting and logging.
+- flappy_bird.ipynb: Jupyter Notebook that contains the program
+- checkpoints: folder that stores locally the models/graphs 
+- README.md: markdown documentation
