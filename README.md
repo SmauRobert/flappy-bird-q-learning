@@ -78,6 +78,13 @@ We utilize a Dueling Architecture which splits the network into two streams afte
 $Q(s,a)=V(s)+\left(A(s,a)-\frac{1}{|\mathcal{A}|}\sum_{a'}A(s,a')\right)$
 
 ### 3. Loss Function: SmoothL1Loss (Huber Loss)
+\[
+\mathcal{L}(x) =
+\begin{cases}
+\frac{1}{2} x^2, & \text{if } |x| < 1 \\
+|x| - \frac{1}{2}, & \text{otherwise}
+\end{cases}
+\]
 Small errors -> MSE behaviour  
 Large errors -> Liniar behaviour
 
