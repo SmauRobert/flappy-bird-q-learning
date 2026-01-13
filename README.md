@@ -75,7 +75,7 @@ We utilize a Dueling Architecture which splits the network into two streams afte
 - **Value Stream V(s)**: Estimates the value of being in the current state.
 - **Advantage Stream A(s,a)**: Estimates the benefit of taking a specific action.
 
-$Q(s,a)=V(s)+(A(s,a)−1/∣A∣*\sum{}​A(s,a′))$
+$Q(s,a)=V(s)+\left(A(s,a)-\frac{1}{|\mathcal{A}|}\sum_{a'}A(s,a')\right)$
 
 ### 3. Loss Function: SmoothL1Loss (Huber Loss)
 Small errors -> MSE behaviour  
