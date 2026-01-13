@@ -112,6 +112,10 @@ After training for 2400 episodes, our agent achieved the following stats:
 
 - Max Score: 323 pipes
 
+After training for 3500 episodes, the agent has achieved:
+
+- Max Score: 757
+
 
 ## ⚠️ Challenges & Future Improvements
 
