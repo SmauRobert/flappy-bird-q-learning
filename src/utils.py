@@ -11,93 +11,109 @@ class MetricLogger:
         self.save_dir = save_dir
         self.log_file = os.path.join(save_dir, "log.csv")
 
-        # Headers
+        # Updated Headers
         with open(self.log_file, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(["Episode", "Score", "Reward", "Epsilon", "TimeElapsed"])
+            writer.writerow(
+                [
+                    "Episode",
+                    "Score",
+                    "Reward",
+                    "Epsilon",
+                    "Loss",
+                    "AvgQ",
+                    "GradNorm",
+                    "FlapProb",
+                ]
+            )
 
         self.episodes = []
         self.scores = []
         self.rewards = []
         self.epsilons = []
+        self.losses = []
+        self.avg_qs = []
+        self.grad_norms = []
+        self.flap_probs = []  # New
 
-        # Timing
         self.start_time = time.time()
-        self.record_time = time.time()  # Tracks time since last record
+        self.record_time = time.time()
 
-        # Live Plotting Setup
-        plt.ion()  # Interactive mode on
-        self.fig, (self.ax1, self.ax2) = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
-        self.fig.canvas.manager.set_window_title("Training Evolution")
-        (self.line_scores,) = self.ax1.plot([], [], color="tab:blue", label="Score")
-        (self.line_trend,) = self.ax1.plot(
-            [], [], color="red", linestyle="--", label="Avg"
-        )
-        (self.line_reward,) = self.ax2.plot([], [], color="tab:green", label="Reward")
+        plt.ion()
+        # 3x2 Grid for maximum visibility
+        self.fig, self.axs = plt.subplots(3, 2, figsize=(12, 10))
+        self.fig.canvas.manager.set_window_title("Deep Q-Learning Dashboard")
+        plt.tight_layout(pad=3.0)
 
-        self.ax3 = self.ax2.twinx()
-        (self.line_epsilon,) = self.ax3.plot(
-            [], [], color="tab:orange", linestyle=":", label="Epsilon"
-        )
-
-        self.ax1.set_ylabel("Pipes Passed")
-        self.ax1.legend(loc="upper left")
-        self.ax1.grid(True, alpha=0.3)
-
-        self.ax2.set_ylabel("Reward", color="tab:green")
-        self.ax3.set_ylabel("Epsilon", color="tab:orange")
-        plt.tight_layout()
-
-    def log(self, episode, score, reward, epsilon):
-        # Update Data
+    def log(self, episode, score, reward, epsilon, loss, avg_q, grad_norm, flap_prob):
         self.episodes.append(episode)
         self.scores.append(score)
         self.rewards.append(reward)
         self.epsilons.append(epsilon)
+        self.losses.append(loss)
+        self.avg_qs.append(avg_q)
+        self.grad_norms.append(grad_norm)
+        self.flap_probs.append(flap_prob)
 
-        elapsed = time.time() - self.start_time
-
-        # Save to CSV
         with open(self.log_file, "a", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([episode, score, reward, epsilon, elapsed])
+            writer.writerow(
+                [episode, score, reward, epsilon, loss, avg_q, grad_norm, flap_prob]
+            )
 
     def update_plot(self):
-        """Refreshes the live window (Call this periodically, not every step)"""
         x = self.episodes
 
-        # Update Score Line
-        self.line_scores.set_data(x, self.scores)
-
-        # Update Trend Line
+        # 1. Scores (The Main Goal)
+        ax = self.axs[0, 0]
+        ax.clear()
+        ax.plot(x, self.scores, "b-", alpha=0.3, label="Score")
         if len(self.scores) >= 50:
-            window = 50
-            trend = np.convolve(self.scores, np.ones(window) / window, mode="valid")
-            self.line_trend.set_data(x[window - 1 :], trend)
+            avg = np.convolve(self.scores, np.ones(50) / 50, mode="valid")
+            ax.plot(x[49:], avg, "r-", label="Avg Score")
+        ax.set_title("Score")
+        ax.legend()
 
-        # Update Reward/Epsilon
-        self.line_reward.set_data(x, self.rewards)
-        self.line_epsilon.set_data(x, self.epsilons)
+        # 2. Loss (Stability Check)
+        ax = self.axs[0, 1]
+        ax.clear()
+        ax.plot(x, self.losses, "m-", alpha=0.5)
+        ax.set_title("Loss (Log Scale)")
+        ax.set_yscale("log")
 
-        # Rescale Axes
-        self.ax1.relim()
-        self.ax1.autoscale_view()
-        self.ax2.relim()
-        self.ax2.autoscale_view()
-        self.ax3.relim()
-        self.ax3.autoscale_view()
+        # 3. Epsilon (Exploration Phase)
+        ax = self.axs[1, 0]
+        ax.clear()
+        ax.plot(x, self.epsilons, "orange", label="Epsilon")
+        ax.set_title("Epsilon (Exploration)")
+
+        # 4. Action Distribution (Policy Health)
+        ax = self.axs[1, 1]
+        ax.clear()
+        ax.plot(x, self.flap_probs, "c-", alpha=0.5)
+        ax.set_title("Flap Probability (Action Dist)")
+        ax.set_ylim(0, 1)  # 0% to 100%
+        ax.axhline(
+            y=0.1, color="k", linestyle="--", alpha=0.3
+        )  # Reference line for "healthy" flapping
+
+        # 5. Q-Values (Confidence)
+        ax = self.axs[2, 0]
+        ax.clear()
+        ax.plot(x, self.avg_qs, "g-", alpha=0.5)
+        ax.set_title("Avg Q-Value")
+
+        # 6. Gradient Norm (Technical Health)
+        ax = self.axs[2, 1]
+        ax.clear()
+        ax.plot(x, self.grad_norms, "k-", alpha=0.5)
+        ax.set_title("Gradient Norm")
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
-
-        # Save static copy
         plt.savefig(os.path.join(self.save_dir, "training_graph.png"))
 
     def get_time_stats(self):
-        """Returns string with total time and time since last record"""
         now = time.time()
-        total_time = now - self.start_time
-        since_last = now - self.record_time
-        self.record_time = now  # Reset split timer
-
-        return f"{int(total_time // 60)}m {int(total_time % 60)}s (Split: {int(since_last)}s)"
+        total = int(now - self.start_time)
+        return f"{total // 60}m {total % 60}s"

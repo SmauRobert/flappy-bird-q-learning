@@ -6,6 +6,7 @@ import random
 import cv2
 import numpy as np
 import torch
+
 from src.agent import FlappyAgent
 from src.environment import Environment
 from src.utils import MetricLogger
@@ -13,21 +14,23 @@ from src.utils import MetricLogger
 # --- CONFIGURATION ---
 PARAMS = {
     "seed": 221022,
-    "episodes": 10000,
+    "episodes": 20000,
     "batch_size": 32,
     "lr": 1e-4,
     "gamma": 0.99,
-    "epsilon_start": 0.90,
+    "epsilon_start": 0.8,
+    "epsilon_mid": 0.5,
     "epsilon_end": 0.01,
-    "epsilon_decay": 30000,
-    "target_update": 2000,
-    "memory_size": 100000,
+    "epsilon_1st_decay": 30000,
+    "epsilon_2nd_decay": 100000,
+    "target_update": 1500,
+    "memory_size": 30000,
     "stack_size": 4,
     "frame_skip": 4,
-    "validate_every": 250,
-    "validate_games": 5,
+    "validate_every": 500,
+    "validate_games": 10,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
-    "initial_weights": "checkpoints/exp_005/best_model_score_6.weights",
+    "initial_weights": None,
 }
 
 
@@ -130,13 +133,20 @@ def train():
 
             epsilon = PARAMS["epsilon_start"]
 
+            loss, mean_q, grad_norm, flap_prob = 0, 0, 0, 0
+
             while not done:
+                decay_rate = (
+                    PARAMS["epsilon_1st_decay"]
+                    if epsilon < PARAMS["epsilon_mid"]
+                    else PARAMS["epsilon_2nd_decay"]
+                )
                 epsilon = PARAMS["epsilon_end"] + (
                     PARAMS["epsilon_start"] - PARAMS["epsilon_end"]
-                ) * np.exp(-1.0 * steps_done / PARAMS["epsilon_decay"])
+                ) * np.exp(-1.0 * steps_done / decay_rate)
 
                 action = agent.select_action(state, epsilon)
-                next_state, reward, terminated, truncated, info = env.step(action)
+                next_state, _, terminated, truncated, info = env.step(action)
                 done = terminated or truncated
 
                 # Reward Shaping
@@ -151,7 +161,12 @@ def train():
                     raw_score = curr_score
 
                 agent.cache(state, action, r, next_state, done)
-                agent.learn(PARAMS["batch_size"])
+                metrics = agent.learn(PARAMS["batch_size"])
+
+                if metrics:
+                    loss, mean_q, grad_norm, flap_prob = metrics
+                else:
+                    loss, mean_q, grad_norm, flap_prob = 0, 0, 0, 0
 
                 if steps_done % PARAMS["target_update"] == 0:
                     agent.sync_target()
@@ -161,7 +176,16 @@ def train():
                 steps_done += 1
 
             # --- End of Episode ---
-            logger.log(episode, raw_score, ep_reward, epsilon)
+            logger.log(
+                episode,
+                raw_score,
+                ep_reward,
+                epsilon,
+                loss,
+                mean_q,
+                grad_norm,
+                flap_prob,
+            )
 
             # Check Record
             if raw_score >= best_score and raw_score > 0:

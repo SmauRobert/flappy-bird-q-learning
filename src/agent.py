@@ -83,33 +83,39 @@ class FlappyAgent:
             np.array(done, dtype=np.uint8),
         )
 
-    def learn(self, batch_size: int = 32) -> float:
-        """Updates the Policy Network using a batch of experiences."""
+    def learn(self, batch_size: int = 32):
+        """Updates the Policy Network. Returns (loss, mean_q, grad_norm, flap_prob)"""
         if len(self.memory) < batch_size:
-            return 0.0
+            return None
 
         states, actions, rewards, next_states, dones = self.recall(batch_size)
 
+        # ... [Tensor conversion code] ...
         states_t = torch.FloatTensor(states).to(self.device)
         next_states_t = torch.FloatTensor(next_states).to(self.device)
         actions_t = torch.LongTensor(actions).unsqueeze(1).to(self.device)
         rewards_t = torch.FloatTensor(rewards).unsqueeze(1).to(self.device)
         dones_t = torch.FloatTensor(dones).unsqueeze(1).to(self.device)
 
+        # 1. Get Q Values
         current_q = self.policy_net(states_t).gather(1, actions_t)
 
+        # ... [Target calculation] ...
         with torch.no_grad():
-            next_q = self.target_net(next_states_t).max(1)[0].unsqueeze(1)
+            best_action_indices = self.policy_net(next_states_t).argmax(1).unsqueeze(1)
+            next_q = self.target_net(next_states_t).gather(1, best_action_indices)
             expected_q = rewards_t + (self.gamma * next_q * (1 - dones_t))
 
         loss = nn.SmoothL1Loss()(current_q, expected_q)
 
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)
+        grad_norm = torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)
         self.optimizer.step()
 
-        return loss.item()
+        flap_prob = (actions_t == 1).float().mean().item()
+
+        return loss.item(), current_q.mean().item(), grad_norm.item(), flap_prob
 
     def sync_target(self):
         """Copies weights from Policy Net to Target Net."""
